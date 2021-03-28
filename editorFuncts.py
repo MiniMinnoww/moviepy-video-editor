@@ -16,22 +16,6 @@ def getUnderAudio(a, minAudioLevel):
     return returnList
 
 
-class ProgressBar(ttk.Progressbar):
-    def __init__(self, root, mode, time=None, increment=10, **kwargs):
-        self.increment = increment
-        super(ProgressBar, self).__init__(root, **kwargs)
-        if mode == "timed":
-            if time is None:
-                raise ValueError("Time needs to be set")
-            else:
-                pBarThr = Thread(target=self.time, args=(time,))
-                pBarThr.start()
-
-    def time(self, time):
-        while True:
-            self['value'] += self.increment
-
-
 class ToolTip(object):
 
     def __init__(self, tip, widget):
