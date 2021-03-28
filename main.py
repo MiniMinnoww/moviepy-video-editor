@@ -1,65 +1,26 @@
 # Import Modules
 import tkinter as tk
 import tkinter.ttk as ttk
-
-loader = tk.Tk()
-loader.overrideredirect(True)
-loader.geometry(f"500x500+{int(loader.winfo_screenwidth() / 2) - 250}+{int(loader.winfo_screenheight() / 2) - 250}")
-progress = ttk.Progressbar(loader, orient=tk.HORIZONTAL,
-                           length=100, mode='determinate')
-
-
-def updateProgress():
-    global progress
-    progress['value'] += 10
-    loader.update()
-
-
-progress.pack()
 import tkinter.filedialog
 import tkinter.messagebox as box
-
-updateProgress()
 import tkinter.colorchooser as chooser
-
-updateProgress()
 from collections import OrderedDict
-
-updateProgress()
 from functools import partial
-
-updateProgress()
 from random import randint
-
-updateProgress()
 from threading import Thread
-
-updateProgress()
 from timeme import timeme
-
-updateProgress()
 from PIL import Image as Img
-
-updateProgress()
 from PIL import ImageTk as ImgTK
-
-updateProgress()
 from editorFuncts import *
 from moviepy.editor import *
-updateProgress()
-loader.destroy()
 tooltips = []
 
-
-def motion(event):
-    x, y = event.x, event.y
-    print('{}, {}'.format(x, y))
-
-
+# Function to know when user slides the slider
 def sliderUpdate(val):
     return val
 
 
+# Function to highlight the button background when hover
 def changeButtonBG(t, btn, event):
     if t == 1:
         btn.configure(bg="#1C1C1C")
@@ -67,15 +28,14 @@ def changeButtonBG(t, btn, event):
         btn.configure(bg="#000000")
 
 
+# Adds a tooltip to the button
 def addToolTip(widget, tip):
     tooltips.append(ToolTip(tip, widget))
     widget.bind('<Enter>', tooltips[len(tooltips) - 1].showtip, add="+")
     widget.bind('<Leave>', tooltips[len(tooltips) - 1].hidetip, add="+")
 
 
-# Loading_Bar is to display a loading screen when loading things
-
-
+# A listbox class to let user drag and drop elements
 class Drag_and_Drop_Listbox(tkinter.Listbox):
     def __init__(self, master, **kw):
         kw['selectmode'] = tkinter
@@ -120,12 +80,9 @@ class Drag_and_Drop_Listbox(tkinter.Listbox):
             self.curIndex = i
 
 
-class window:
+# Main for video window
+class main:
     def __init__(self):
-        """
-        Shows a window with the video editor on - its the main function.
-        :return:
-        """
         self._bgcolor = '#000000'
         self._framebg = "#2E2E2E"
         _fgcolor = '#000000'
@@ -572,5 +529,5 @@ class window:
 
 
 if __name__ == "__main__":
-    a = window()
+    a = main()
     a.root.mainloop()
