@@ -86,9 +86,6 @@ class main:
         self._bgcolor = '#000000'
         self._framebg = "#2E2E2E"
         _fgcolor = '#000000'
-        _compcolor = '#d9d9d9'
-        _ana1color = '#d9d9d9'
-        _ana2color = '#ececec'
 
         self.clipFrames = {}
         self.loader = Loading_Bar()
