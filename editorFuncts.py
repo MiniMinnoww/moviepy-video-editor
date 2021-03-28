@@ -217,3 +217,18 @@ class Editor:
         txt_clip.set_duration(videoObj.duration)
         video = CompositeVideoClip([clip, txt_clip]).set_duration(videoObj.duration)
         return video
+
+    def addMargin(self, vid, type, size, color):
+        if type == "border":
+            clip_with_margin = vid.margin(size, color=color)
+        else:
+            clip_with_margin = vid.margin(top=size, bottom=size, color=color)
+        return clip_with_margin
+
+    def getMarginPreview(self, vid, type, size, color):
+        clip = vid.subclip(0, 0.001)
+        if type == "border":
+            clip_with_margin = vid.margin(size)
+        else:
+            clip_with_margin = vid.margin(top=size, bottom=size)
+        return clip_with_margin

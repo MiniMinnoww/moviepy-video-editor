@@ -13,6 +13,7 @@ from PIL import Image as Img
 from PIL import ImageTk as ImgTK
 from editorFuncts import *
 from moviepy.editor import *
+from time import sleep
 tooltips = []
 
 # Function to know when user slides the slider
@@ -96,8 +97,6 @@ class main:
         self.selectedColor = "#000000"  # This is because buttons don't return value
         self.editor = Editor()
 
-        self.videoID = randint(0, 20000)
-
         self.root = tk.Tk()
 
         self.root.geometry("1537x877+271+154")
@@ -110,7 +109,6 @@ class main:
 
         self.selectionInfo = tk.Label(self.root, text="", font=('Helvetica', 9), bg=self._bgcolor, fg="#FFFFFF")
         self.root.update()
-        print(self.root.winfo_height())
         self.selectionInfo.place(x=0, y=835)
 
         _addImage = tk.PhotoImage(file="addClip.png")
@@ -146,6 +144,7 @@ class main:
         self.editMenu.add_command(label="Order Clips", command=self.reorderClips)
         self.editMenu.add_command(label="Trim Clip", command=self.trimClip)
         self.editMenu.add_command(label="Auto-Cut clip", command=self.cutOutAudio)
+        self.editMenu.add_command(label="Add margin", command=self.addMargin, state=tk.DISABLED)
 
         self.videoMenu.add_command(label="Preview video", command=self._preview)
         self.videoMenu.add_command(label="Export video", command=self.finishVideo)
@@ -182,11 +181,10 @@ class main:
 
         for index, tip in enumerate(self.buttonTips):
             state = tk.NORMAL
-            # if tip == "Add text to a clip - (Disabled because of MoviePy error)":
-            #     state = tk.DISABLED
             self.buttons.append(
                 tk.Button(self.root, image=self.images[index], command=self.commands[index], bg=self._bgcolor,
                           relief=tk.FLAT, state=state))
+
             self.buttons[index].photo = self.images[index]
             self.buttons[index].place(x=index * 30, y=490)
             self.buttons[index].bind('<Enter>', func=partial(changeButtonBG, 1, self.buttons[index]), add="+")
@@ -293,7 +291,7 @@ class main:
                 final_clip = final_clip.set_fps(int(self.fpsEntry.get()))
             print(f"Duration: {str(final_clip.duration)}, {str(final_clip.audio.duration)}")
 
-            final_clip.write_videofile(videoName + ".mp4")  # , preset=str(self.speedList.get())
+            final_clip.write_videofile(videoName + ".mp4", threads=6)  # , preset=str(self.speedList.get())
             box.showinfo("Success", "Your video has been successfully created!")
 
     def cutOutAudio(self):
@@ -524,6 +522,53 @@ class main:
         colour = chooser.askcolor()
         self.selectedColor = str(colour[1]).upper()
 
+
+    def addMargin(self, add=False):
+        if self.selectedClip != "":
+            if not add:
+                self.temp_root = tk.Tk()
+                self.temp_root.configure(bg=self._bgcolor)
+                tk.Label(self.temp_root, text="Enter margin size: ", background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT).grid(row=1, column=1)
+                self.entry01 = tk.Entry(self.temp_root, background=self._framebg, foreground="#FFFFFF", relief=tk.FLAT)
+                self.entry01.grid(row=1, column=2)
+
+                tk.Label(self.temp_root, text="Enter margin type (margin or border)", background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT).grid(row=2, column=1)
+                self.entry03 = tk.Entry(self.temp_root, background=self._framebg, foreground="#FFFFFF", relief=tk.FLAT)
+                self.entry03.grid(row=2, column=2)
+
+                colorBtn = tk.Button(self.temp_root, text="Select margin color", command=self.selectColour, background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
+                colorBtn.grid(row=3, column=1, columnspan=2)
+                colorBtn.bind('<Enter>', func=partial(changeButtonBG, 1, colorBtn), add="+")
+                colorBtn.bind('<Leave>', func=partial(changeButtonBG, 0, colorBtn), add="+")
+
+                prevBtn = tk.Button(self.temp_root, text="Preview video", command=partial(self.addMargin, 2), background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT, state=tk.DISABLED)
+                prevBtn.grid(row=4, column=1, columnspan=2)
+                prevBtn.bind('<Enter>', func=partial(changeButtonBG, 1, prevBtn), add="+")
+                prevBtn.bind('<Leave>', func=partial(changeButtonBG, 0, prevBtn), add="+")
+
+                addBtn = tk.Button(self.temp_root, text="Add Margin", command=partial(self.addMargin, 1), background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
+                addBtn.grid(row=5, column=1, columnspan=2)
+                addBtn.bind('<Enter>', func=partial(changeButtonBG, 1, addBtn), add="+")
+                addBtn.bind('<Leave>', func=partial(changeButtonBG, 0, addBtn), add="+")
+
+            elif add == 1:
+                x = self.editor.addMargin(vid=self.clipFrames[self.selectedClip][1], size=int(self.entry01.get()), type=self.entry03.get(), color=self.selectedColor)
+                self.clipFrames[self.selectedClip][1] = x
+                self.temp_root.destroy()
+
+            elif add == 2:
+                x = self.editor.getMarginPreview(vid=self.clipFrames[self.selectedClip][1], size=int(self.entry01.get()), type=self.entry03.get(), color=self.selectedColor)
+                for image in x.iter_frames():
+                    img = Img.fromarray(image)
+                    img = img.resize((400, 200), Img.ANTIALIAS)
+                    TKImg = ImgTK.PhotoImage(img)
+                    break
+                self.reloadVideoFrame()
+                self.img_label = tk.Label(self.videoPlayer, image=TKImg)
+                self.img_label.pack()
+                self.img_label.photo = TKImg
+            else:
+                box.showwarning("Error", "Please select a clip first")
 
 if __name__ == "__main__":
     a = main()
