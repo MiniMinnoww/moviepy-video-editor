@@ -15,6 +15,7 @@ def getUnderAudio(a, minAudioLevel):
         x += 1
     return returnList
 
+
 class ProgressBar(ttk.Progressbar):
     def __init__(self, root, mode, time=None, increment=10, **kwargs):
         self.increment = increment
@@ -29,6 +30,7 @@ class ProgressBar(ttk.Progressbar):
     def time(self, time):
         while True:
             self['value'] += self.increment
+
 
 class ToolTip(object):
 
