@@ -14,7 +14,18 @@ from PIL import ImageTk as ImgTK
 from editorFuncts import *
 from moviepy.editor import *
 from time import sleep
+
 tooltips = []
+
+
+def getImages(sprite_sheet, x):
+    im = Img.open(sprite_sheet)
+    w, h = im.size
+    ww = w // x
+    images = []
+    for n in range(0, x):
+        images.append(im.crop((ww * n, 0, ww * (n + 1), h)))
+    return images
 
 # Function to know when user slides the slider
 def sliderUpdate(val):
@@ -22,7 +33,7 @@ def sliderUpdate(val):
 
 
 # Function to highlight the button background when hover
-def changeButtonBG(t, btn, event):
+def changeButtonBG(t, btn, _):
     if t == 1:
         btn.configure(bg="#1C1C1C")
     else:
@@ -111,14 +122,16 @@ class main:
         self.root.update()
         self.selectionInfo.place(x=0, y=835)
 
-        _addImage = tk.PhotoImage(file="addClip.png")
-        _switchImage = tk.PhotoImage(file="orderClip.png")
-        _trimImage = tk.PhotoImage(file="trimClip.png")
-        _autoTrimImage = tk.PhotoImage(file="autotrimClip.png")
-        _autoStartImage = tk.PhotoImage(file="autocutclip.png")
-        _previewImage = tk.PhotoImage(file="previewClip.png")
-        _exportImage = tk.PhotoImage(file="exportClip.png")
-        _addTextImage = tk.PhotoImage(file="addText.png")
+        imageLst = getImages("spritesheet.png", 8)
+
+        _addImage = ImgTK.PhotoImage(imageLst[1])
+        _switchImage = ImgTK.PhotoImage(imageLst[5])
+        _trimImage = ImgTK.PhotoImage(imageLst[7])
+        _autoTrimImage = ImgTK.PhotoImage(imageLst[3])
+        _autoStartImage = ImgTK.PhotoImage(imageLst[0])
+        _previewImage = ImgTK.PhotoImage(imageLst[6])
+        _exportImage = ImgTK.PhotoImage(imageLst[4])
+        _addTextImage = ImgTK.PhotoImage(imageLst[2])
 
         self.videoPlayer = tk.Frame(self.root)
         self.videoPlayer.place(relx=0.371, rely=0.011, relheight=0.593, relwidth=0.618)
@@ -135,7 +148,8 @@ class main:
         self.clipTimeline.configure(relief="flat")
         self.clipTimeline.configure(background=self._framebg)
 
-        self.menubar = tk.Menu(self.root, font="TkMenuFont", bg=self._bgcolor, fg=_fgcolor, activebackground=self._bgcolor, activeforeground=_fgcolor)
+        self.menubar = tk.Menu(self.root, font="TkMenuFont", bg=self._bgcolor, fg=_fgcolor,
+                               activebackground=self._bgcolor, activeforeground=_fgcolor)
 
         self.editMenu = tk.Menu(self.menubar, tearoff=0)
         self.videoMenu = tk.Menu(self.menubar, tearoff=0)
@@ -257,11 +271,15 @@ class main:
             self.finishRoot.title("Export Video")
             self.finishRoot.configure(bg=self._bgcolor)
 
-            presetOptions = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"]
+            presetOptions = ["ultra fast", "super fast", "very fast", "faster", "fast", "medium", "slow", "slower",
+                             "very slow", "placebo"]
 
-            tkinter.Label(self.finishRoot, text="Video Name", bg=self._bgcolor, relief=tk.FLAT, fg="#FFFFFF").grid(row=1, column=1)
-            tkinter.Label(self.finishRoot, text="Video fps", bg=self._bgcolor, relief=tk.FLAT, fg="#FFFFFF").grid(row=2, column=1)
-            tkinter.Label(self.finishRoot, text="Speed", bg=self._bgcolor, relief=tk.FLAT, fg="#FFFFFF").grid(row=3, column=1)
+            tkinter.Label(self.finishRoot, text="Video Name", bg=self._bgcolor, relief=tk.FLAT, fg="#FFFFFF").grid(
+                row=1, column=1)
+            tkinter.Label(self.finishRoot, text="Video fps", bg=self._bgcolor, relief=tk.FLAT, fg="#FFFFFF").grid(row=2,
+                                                                                                                  column=1)
+            tkinter.Label(self.finishRoot, text="Speed", bg=self._bgcolor, relief=tk.FLAT, fg="#FFFFFF").grid(row=3,
+                                                                                                              column=1)
 
             self.nameEntry = tk.Entry(self.finishRoot, bg=self._framebg, relief=tk.FLAT, fg="#FFFFFF")
             self.nameEntry.grid(row=1, column=2)
@@ -269,10 +287,12 @@ class main:
             self.fpsEntry = tk.Entry(self.finishRoot, bg=self._framebg, relief=tk.FLAT, fg="#FFFFFF")
             self.fpsEntry.grid(row=2, column=2)
 
-            self.speedList = tk.Spinbox(self.finishRoot, values=presetOptions, background=self._framebg, foreground="#FFFFFF", relief=tk.FLAT)
+            self.speedList = tk.Spinbox(self.finishRoot, values=presetOptions, background=self._framebg,
+                                        foreground="#FFFFFF", relief=tk.FLAT)
             self.speedList.grid(row=3, column=2)
 
-            finishButton = tkinter.Button(self.finishRoot, text="Export Video", command=partial(self.finishVideo, True), bg=self._bgcolor, relief=tk.FLAT, fg="#FFFFFF")
+            finishButton = tkinter.Button(self.finishRoot, text="Export Video", command=partial(self.finishVideo, True),
+                                          bg=self._bgcolor, relief=tk.FLAT, fg="#FFFFFF")
             finishButton.grid(row=4, column=1, columnspan=2)
             finishButton.bind('<Enter>', func=partial(changeButtonBG, 1, finishButton), add="+")
             finishButton.bind('<Leave>', func=partial(changeButtonBG, 0, finishButton), add="+")
@@ -281,7 +301,7 @@ class main:
             videoName = self.nameEntry.get()
             clips = []
             for key in list(self.clipFrames.keys()):
-                clips.append(self.clipFrames[key][1])   # VideoFile object
+                clips.append(self.clipFrames[key][1])  # VideoFile object
 
             # for index, clip in enumerate(clips):
             #     clips[index] = clip.without_audio().set_audio(clip.audio)
@@ -421,33 +441,40 @@ class main:
             if not add:
                 self.temp_root = tk.Tk()
                 self.temp_root.configure(bg=self._bgcolor)
-                tk.Label(self.temp_root, text="Enter text here", background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT).grid(row=1, column=1)
+                tk.Label(self.temp_root, text="Enter text here", background=self._bgcolor, foreground="#FFFFFF",
+                         relief=tk.FLAT).grid(row=1, column=1)
                 self.entry1 = tk.Entry(self.temp_root, background=self._framebg, foreground="#FFFFFF", relief=tk.FLAT)
                 self.entry1.grid(row=1, column=2)
 
-                tk.Label(self.temp_root, text="Select font size", background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT).grid(row=2, column=1)
+                tk.Label(self.temp_root, text="Select font size", background=self._bgcolor, foreground="#FFFFFF",
+                         relief=tk.FLAT).grid(row=2, column=1)
                 self.entry2 = tk.Entry(self.temp_root, background=self._framebg, foreground="#FFFFFF", relief=tk.FLAT)
                 self.entry2.grid(row=2, column=2)
 
-                tk.Label(self.temp_root, text="Enter x value (0 = left)", background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT).grid(row=4, column=1)
+                tk.Label(self.temp_root, text="Enter x value (0 = left)", background=self._bgcolor,
+                         foreground="#FFFFFF", relief=tk.FLAT).grid(row=4, column=1)
                 self.entry3 = tk.Entry(self.temp_root, background=self._framebg, foreground="#FFFFFF", relief=tk.FLAT)
                 self.entry3.grid(row=4, column=2)
 
-                tk.Label(self.temp_root, text="Enter x value (0 = top)", background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT).grid(row=5, column=1)
+                tk.Label(self.temp_root, text="Enter x value (0 = top)", background=self._bgcolor, foreground="#FFFFFF",
+                         relief=tk.FLAT).grid(row=5, column=1)
                 self.entry4 = tk.Entry(self.temp_root, background=self._framebg, foreground="#FFFFFF", relief=tk.FLAT)
                 self.entry4.grid(row=5, column=2)
 
-                colorBtn = tk.Button(self.temp_root, text="Select text colour", command=self.selectColour, background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
+                colorBtn = tk.Button(self.temp_root, text="Select text colour", command=self.selectColour,
+                                     background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
                 colorBtn.grid(row=6, column=1, columnspan=2)
                 colorBtn.bind('<Enter>', func=partial(changeButtonBG, 1, colorBtn), add="+")
                 colorBtn.bind('<Leave>', func=partial(changeButtonBG, 0, colorBtn), add="+")
 
-                prevBtn = tk.Button(self.temp_root, text="Preview video", command=partial(self.addText, 2), background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
+                prevBtn = tk.Button(self.temp_root, text="Preview video", command=partial(self.addText, 2),
+                                    background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
                 prevBtn.grid(row=7, column=1, columnspan=2)
                 prevBtn.bind('<Enter>', func=partial(changeButtonBG, 1, prevBtn), add="+")
                 prevBtn.bind('<Leave>', func=partial(changeButtonBG, 0, prevBtn), add="+")
 
-                addBtn = tk.Button(self.temp_root, text="Add Text", command=partial(self.addText, 1), background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
+                addBtn = tk.Button(self.temp_root, text="Add Text", command=partial(self.addText, 1),
+                                   background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
                 addBtn.grid(row=8, column=1, columnspan=2)
                 addBtn.bind('<Enter>', func=partial(changeButtonBG, 1, addBtn), add="+")
                 addBtn.bind('<Leave>', func=partial(changeButtonBG, 0, addBtn), add="+")
@@ -522,42 +549,49 @@ class main:
         colour = chooser.askcolor()
         self.selectedColor = str(colour[1]).upper()
 
-
     def addMargin(self, add=False):
         if self.selectedClip != "":
             if not add:
                 self.temp_root = tk.Tk()
                 self.temp_root.configure(bg=self._bgcolor)
-                tk.Label(self.temp_root, text="Enter margin size: ", background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT).grid(row=1, column=1)
+                tk.Label(self.temp_root, text="Enter margin size: ", background=self._bgcolor, foreground="#FFFFFF",
+                         relief=tk.FLAT).grid(row=1, column=1)
                 self.entry01 = tk.Entry(self.temp_root, background=self._framebg, foreground="#FFFFFF", relief=tk.FLAT)
                 self.entry01.grid(row=1, column=2)
 
-                tk.Label(self.temp_root, text="Enter margin type (margin or border)", background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT).grid(row=2, column=1)
+                tk.Label(self.temp_root, text="Enter margin type (margin or border)", background=self._bgcolor,
+                         foreground="#FFFFFF", relief=tk.FLAT).grid(row=2, column=1)
                 self.entry03 = tk.Entry(self.temp_root, background=self._framebg, foreground="#FFFFFF", relief=tk.FLAT)
                 self.entry03.grid(row=2, column=2)
 
-                colorBtn = tk.Button(self.temp_root, text="Select margin color", command=self.selectColour, background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
+                colorBtn = tk.Button(self.temp_root, text="Select margin color", command=self.selectColour,
+                                     background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
                 colorBtn.grid(row=3, column=1, columnspan=2)
                 colorBtn.bind('<Enter>', func=partial(changeButtonBG, 1, colorBtn), add="+")
                 colorBtn.bind('<Leave>', func=partial(changeButtonBG, 0, colorBtn), add="+")
 
-                prevBtn = tk.Button(self.temp_root, text="Preview video", command=partial(self.addMargin, 2), background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT, state=tk.DISABLED)
+                prevBtn = tk.Button(self.temp_root, text="Preview video", command=partial(self.addMargin, 2),
+                                    background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT, state=tk.DISABLED)
                 prevBtn.grid(row=4, column=1, columnspan=2)
                 prevBtn.bind('<Enter>', func=partial(changeButtonBG, 1, prevBtn), add="+")
                 prevBtn.bind('<Leave>', func=partial(changeButtonBG, 0, prevBtn), add="+")
 
-                addBtn = tk.Button(self.temp_root, text="Add Margin", command=partial(self.addMargin, 1), background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
+                addBtn = tk.Button(self.temp_root, text="Add Margin", command=partial(self.addMargin, 1),
+                                   background=self._bgcolor, foreground="#FFFFFF", relief=tk.FLAT)
                 addBtn.grid(row=5, column=1, columnspan=2)
                 addBtn.bind('<Enter>', func=partial(changeButtonBG, 1, addBtn), add="+")
                 addBtn.bind('<Leave>', func=partial(changeButtonBG, 0, addBtn), add="+")
 
             elif add == 1:
-                x = self.editor.addMargin(vid=self.clipFrames[self.selectedClip][1], size=int(self.entry01.get()), type=self.entry03.get(), color=self.selectedColor)
+                x = self.editor.addMargin(vid=self.clipFrames[self.selectedClip][1], size=int(self.entry01.get()),
+                                          type=self.entry03.get(), color=self.selectedColor)
                 self.clipFrames[self.selectedClip][1] = x
                 self.temp_root.destroy()
 
             elif add == 2:
-                x = self.editor.getMarginPreview(vid=self.clipFrames[self.selectedClip][1], size=int(self.entry01.get()), type=self.entry03.get(), color=self.selectedColor)
+                x = self.editor.getMarginPreview(vid=self.clipFrames[self.selectedClip][1],
+                                                 size=int(self.entry01.get()), type=self.entry03.get(),
+                                                 color=self.selectedColor)
                 for image in x.iter_frames():
                     img = Img.fromarray(image)
                     img = img.resize((400, 200), Img.ANTIALIAS)
@@ -569,6 +603,7 @@ class main:
                 self.img_label.photo = TKImg
             else:
                 box.showwarning("Error", "Please select a clip first")
+
 
 if __name__ == "__main__":
     a = main()
