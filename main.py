@@ -303,8 +303,8 @@ class main:
             for key in list(self.clipFrames.keys()):
                 clips.append(self.clipFrames[key][1])  # VideoFile object
 
-            # for index, clip in enumerate(clips):
-            #     clips[index] = clip.without_audio().set_audio(clip.audio)
+            for index, clip in enumerate(clips):
+                clips[index] = clip.without_audio().set_audio(clip.audio)
             final_clip = concatenate_videoclips(clips)
             if self.fpsEntry.get() != "":
                 print("hello there")
