@@ -108,7 +108,7 @@ class ClipButton(tk.Button):
     def __init__(self, master, image=None, command=None, ):
         super().__init__(master, borderwidth=3, highlightcolor="green", relief=tk.FLAT, image=image)
 
-        mgr = window.DragManager()
+        mgr = DragManager()
         self.configure(command=command)
         mgr.add_dragable(self)
         self.photo = image
