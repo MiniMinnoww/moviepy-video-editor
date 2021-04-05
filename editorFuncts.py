@@ -1,9 +1,29 @@
 from moviepy.editor import *
 from tkinter import *
-import tkinter.ttk as ttk
+
 from numba import jit
-from threading import Thread
-from tqdm import tqdm
+import moviepy.editor as mpy
+
+
+def startProgress(title):
+    global progress_x
+    sys.stdout.write(title + ": [" + "-"*40 + "]" + chr(8)*41)
+    sys.stdout.flush()
+    progress_x = 0
+
+
+def progress(x):
+    global progress_x
+    x = int(x * 40 // 100)
+    sys.stdout.write("#" * (x - progress_x))
+    sys.stdout.flush()
+    progress_x = x
+
+
+def endProgress():
+    sys.stdout.write("#" * (40 - progress_x) + "]\n")
+    sys.stdout.flush()
+
 
 @jit(nopython=True)
 def getUnderAudio(a, minAudioLevel):
@@ -109,7 +129,7 @@ class Editor:
         return clip.subclip(startTime, endTime)
 
     def cut_out_no_audio(self, videoObj, audioGap=1, minAudioLevel=0.005,
-                         speechGap=0.01):  # This works and I am NOT EDITING IT
+                         speechGap=0.01, safeMode=True):
         """
         Cuts out parts of the video that have no audio.\n
         :param videoObj: The video that needs to be cut
@@ -118,14 +138,21 @@ class Editor:
         :param speechGap: The size of the small pause between cuts so it doesn't cut instantly
         :return: VideoClip with necessary cuts
         """
+
         vid = videoObj
         vid = vid.set_duration(vid.duration)
+        print(f"This clip is {str(vid.fps * vid.duration)} frames long")
         b = vid.audio
-        a = b.to_soundarray()
-        frames_to_remove = getUnderAudio(a, minAudioLevel)
         frames_to_remove_2d = []
         c_frames = []
+        frame_ranges = []
         x = 0
+        indx = 0
+
+        a = b.to_soundarray()
+
+        frames_to_remove = getUnderAudio(a, minAudioLevel)
+
         for item in frames_to_remove:
             if x != 0:
                 if (c_frames[-1]) + 1 == item:
@@ -138,38 +165,46 @@ class Editor:
             else:
                 c_frames.append(item)
                 x += 1
-        frames_to_remove_2d.append(c_frames)
-        frame_ranges = []
+        if len(c_frames) > 0:
+            frames_to_remove_2d.append(c_frames)
 
         try:
             fps = vid.audio.fps
         except:
             fps = 11400
+
         x = 0
+
         for lst in frames_to_remove_2d:
             try:
                 frame_ranges.append([lst[0] / fps, lst[-1] / fps])
-                x += 1
-            except Exception as e:
-                pass
+            except:
+                frame_ranges.append([lst[0] / fps])
+            x += 1
 
-        indx = 0
         for x in range(0, len(frame_ranges)):
             if (frame_ranges[indx][1] - frame_ranges[indx][0]) < audioGap:
                 frame_ranges.pop(indx)
             else:
                 indx += 1
-
         vidAud = vid.audio
         vid = vid.without_audio()
+        if safeMode:
+            for lst in reversed(frame_ranges):
+                testaud = vidAud.cutout(lst[0], lst[1])
 
-        for lst in frame_ranges:
-            vid = vid.cutout(lst[0], lst[1])
-            vidAud = vidAud.cutout(lst[0], lst[1])
+                try:
+                    testaud.to_soundarray()
+                    vid = vid.cutout(lst[0], lst[1])
+                    vidAud = vidAud.cutout(lst[0], lst[1])
+                except:
+                    pass
+        else:
+            for lst in reversed(frame_ranges):
+                vid = vid.cutout(lst[0], lst[1])
+                vidAud = vidAud.cutout(lst[0], lst[1])
         vid = vid.set_audio(vidAud)
-        if vid.audio.duration != vid.duration:
-            print(f"BAD DURATION: {str(vid.duration)}, {str(vid.audio.duration)}")
-        print("FINISHED CLIP")
+
         return vid
 
     def cut_out_start(self, videoObj, minAudioLevel=0.005, speechGap=0.01):
@@ -187,6 +222,7 @@ class Editor:
         b = vid.audio
         a = b.to_soundarray()
         print(a.shape)
+
 
         for index, lst in enumerate(a):
             if abs(lst[0]) < minAudioLevel:
@@ -218,8 +254,8 @@ class Editor:
         video = CompositeVideoClip([clip, txt_clip]).set_duration(videoObj.duration)
         return video
 
-    def addMargin(self, vid, type, size, color):
-        if type == "border":
+    def addMargin(self, vid, _type, size, color):
+        if _type == "border":
             clip_with_margin = vid.margin(size, color=color)
         else:
             clip_with_margin = vid.margin(top=size, bottom=size, color=color)
