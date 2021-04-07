@@ -13,6 +13,7 @@ import vidTk as vtk
 from editorFuncts import *
 from timeme import timeme
 
+
 tooltips = []
 
 
@@ -131,6 +132,7 @@ class main:
         self.videoPlayer.configure(borderwidth="2")
         self.videoPlayer.configure(relief="flat")
         self.videoPlayer.configure(background=self._framebg)
+        self.player = vtk.VideoClipFilePlayer(self.videoPlayer)
 
         self.clipTimeline = tk.Frame(self.root)
         self.clipTimeline.place(relx=0.007, rely=0.627, relheight=0.35, relwidth=0.986)
@@ -146,6 +148,9 @@ class main:
         self.editMenu = tk.Menu(self.menubar, tearoff=0)
         self.videoMenu = tk.Menu(self.menubar, tearoff=0)
 
+        self.editMenu.add_command(label="Undo", command=self.undo)
+        self.editMenu.add_command(label="Redo", command=self.redo)
+        self.editMenu.add_separator()
         self.editMenu.add_command(label="Add Clip", command=self.getClipPath)
         self.editMenu.add_command(label="Remove Clip", command=self.removeClip)
         self.editMenu.add_command(label="Order Clips", command=self.reorderClips)
@@ -199,6 +204,7 @@ class main:
         :param path: Path to the video file
         :return:
         """
+        print("k")
         clipNum = len(config.clipFrames)
         clipName = "clip" + str(clipNum)
 
@@ -211,19 +217,24 @@ class main:
         tkImage = tkImage.subsample(4, 4)
 
         btn = vtk.ClipButton(self.clipTimeline, image=tkImage)
+
         pos = 20 + (tkImage.width() * clipNum) + (20 * clipNum)
+        config.saveOld()
         config.clipFrames[clipName] = [btn, vid, pos]
         config.clipFrames[clipName][0].configure(command=partial(self.buttonSelect, config.clipFrames[clipName][0]))
         config.clipFrames[clipName][0].place(x=config.clipFrames[clipName][2], y=50)
+        self.reloadVideoPlayer()
 
     def removeClip(self):
         selected = config.clipFrames[self.selectedClip]
         selected[0].place_forget()
         selected[1].close()
+        config.saveOld()
         del config.clipFrames[self.selectedClip]
         self.reloadOrder()
+        self.reloadVideoPlayer()
 
-    def reloadOrder(self):
+    def reloadOrder(self, _=None):
         """
         Reloads the order of clips on the timeline
         :return:
@@ -232,21 +243,21 @@ class main:
         for index, item in enumerate(list(config.clipFrames.keys())):
             try:
                 config.clipFrames[item][0].destroy()
+                image = config.clipFrames[item][1].get_frame(1)
+                img = Img.fromarray(image, 'RGB')
+                clip = f"clip {str(len(config.clipFrames))}.png"
+                img.save(clip)
+                tkImage = tk.PhotoImage(file=clip)
+                tkImage = tkImage.subsample(4, 4)
+                config.clipFrames[item][0] = vtk.ClipButton(self.clipTimeline, image=tkImage)
+                config.clipFrames[item][0].configure(command=partial(self.buttonSelect, config.clipFrames[item][0]))
+
+                config.clipFrames[item][0].photo = tkImage
+                config.clipFrames[item][0].place(x=xPos, y=50)
+                xPos += 20 + tkImage.width()
+                print(xPos)
             except:
                 pass
-            image = config.clipFrames[item][1].get_frame(1)
-            img = Img.fromarray(image, 'RGB')
-            clip = f"clip {str(len(config.clipFrames))}.png"
-            img.save(clip)
-            tkImage = tk.PhotoImage(file=clip)
-            tkImage = tkImage.subsample(4, 4)
-            config.clipFrames[item][0] = tk.Button(self.clipTimeline, image=tkImage, borderwidth=3,
-                                                   highlightcolor="green", relief=tk.FLAT)
-            config.clipFrames[item][0].configure(command=partial(self.buttonSelect, config.clipFrames[item][0]))
-            config.clipFrames[item][0].photo = tkImage
-            config.clipFrames[item][0].place(x=xPos, y=50)
-            xPos += 20 + tkImage.width()
-            print(xPos)
 
     def finishVideo(self, export=False):
         """
@@ -291,7 +302,6 @@ class main:
                 clips[index] = clip.without_audio().set_audio(clip.audio)
             final_clip = concatenate_videoclips(clips)
             if self.fpsEntry.get() != "":
-                print("hello there")
                 final_clip = final_clip.set_fps(int(self.fpsEntry.get()))
             print(f"Duration: {str(final_clip.duration)}, {str(final_clip.audio.duration)}")
 
@@ -337,15 +347,17 @@ class main:
                 cutVideos = [clip.without_audio().set_audio(clip.audio) for clip in cutVideos]
                 # cutVideos = [clip.set_duration(int(clip.duration)) for clip in cutVideos]
                 concat = concatenate_videoclips(cutVideos)
+                config.saveOld()
                 config.clipFrames[self.selectedClip][1] = concat
-                print("FINISHED")
             else:
                 box.showwarning("Error", "You need to select a clip first")
+            self.reloadVideoPlayer()
 
     def cutOutStart(self):
         if config.clipFrames[self.selectedClip][1] != '':
+            config.saveOld()
             config.clipFrames[self.selectedClip][1] = self.editor.cut_out_start(config.clipFrames[self.selectedClip][1])
-            print("FINISHED")
+            self.reloadVideoPlayer()
 
     def _preview(self):
         try:
@@ -374,10 +386,12 @@ class main:
             self._entry2.grid(row=1, column=1)
             trimButton = vtk.Button(self.menuFrame, text="Trim", command=self._trim)
             trimButton.grid(row=2, column=0, columnspan=2)
+            self.reloadVideoPlayer()
         else:
             box.showwarning("You can't do this", "You need to select a clip to trim first!")
 
     def _trim(self):
+        config.saveOld()
         config.clipFrames[self.selectedClip][1] = self.editor.sub_clip(config.clipFrames[self.selectedClip][1],
                                                                        int(self._entry1.get()), int(self._entry2.get()))
         self.reloadMenuFrame()
@@ -386,18 +400,13 @@ class main:
         clips = tkinter.filedialog.askopenfilenames(title="Choose Clip File")
 
         clips = [clip.replace("/", "\\") for clip in clips]  # For consistency
-        temp_loader = Loading_Bar()
-        if __name__ == "__main__":
-            loadThread = Thread(target=Loading_Bar.startLoad, args=(temp_loader, "Adding Clips"))
-            loadThread.start()
+        # temp_loader = Loading_Bar()
+        # if __name__ == "__main__":
+        #     loadThread = Thread(target=Loading_Bar.startLoad, args=(temp_loader, "Adding Clips"))
+        #     loadThread.start()
         for clip in clips:
-            # try:
             self.addClip(clip)
-            # except Exception as e:
-            #     box.showerror("Error loading clip", "There was an error loading clip: " + os.path.basename(clip))
-            #     print(e)
-            #     print(e.args)
-        temp_loader.stopLoad()
+        # temp_loader.stopLoad()
 
     def reorderClips(self):
         self.reloadMenuFrame()
@@ -413,10 +422,11 @@ class main:
         ordered = OrderedDict()
         for k in order:
             ordered[k] = config.clipFrames[k]
+        config.saveOld()
         config.clipFrames = dict(ordered)
         self.reloadMenuFrame()
         self.reloadOrder()
-        self.updateInfoOnSelection()
+        self.reloadVideoPlayer()
 
     def sliderUpdate(self, val):
         self.sliderPos = int(val)
@@ -434,8 +444,8 @@ class main:
 
         for key in list(config.clipFrames.keys()):
             config.clipFrames[key][0].configure(bg="gray")
-        if button["bg"] == "gray":
-            button.configure(bg="green")
+        # if button["bg"] == "gray":
+        button.configure(bg="green")
         self.updateInfoOnSelection()
 
     def addText(self, add=False):
@@ -478,11 +488,11 @@ class main:
                                         videoObj=config.clipFrames[self.selectedClip][1], color=self.selectedColor,
                                         fontsize=int(self.entry2.get()))
                 print(type(x))
+                config.saveOld()
                 config.clipFrames[self.selectedClip][1] = x
                 print(type(config.clipFrames[self.selectedClip][1]))
-                # except:
-                #     box.showwarning("Error", "There was an error adding text to the clip")
                 self.temp_root.destroy()
+                self.reloadVideoPlayer()
 
             elif add == 2:
                 x = self.editor.getTextPreview(x=int(self.entry3.get()), y=int(self.entry4.get()),
@@ -568,10 +578,13 @@ class main:
                 addBtn.grid(row=5, column=1, columnspan=2)
 
             elif add == 1:
+
                 x = self.editor.addMargin(vid=config.clipFrames[self.selectedClip][1], size=int(self.entry01.get()),
                                           _type=self.entry03.get(), color=self.selectedColor)
+                config.saveOld()
                 config.clipFrames[self.selectedClip][1] = x
                 self.temp_root.destroy()
+                self.reloadVideoPlayer()
 
             elif add == 2:
                 x = self.editor.getMarginPreview(vid=config.clipFrames[self.selectedClip][1],
@@ -589,7 +602,29 @@ class main:
             else:
                 box.showwarning("Error", "Please select a clip first")
 
+    def undo(self):
+        new = config.undo()
+        config.clipFrames = new
+        print(config.clipFrames)
+        self.reloadOrder()
 
+    def redo(self):
+        new = config.redo()
+        config.clipFrames = new
+        self.reloadOrder()
+
+    def reloadVideoPlayer(self):
+        all_clips = []
+        for x in list(config.clipFrames.values()):
+            all_clips.append(x[1])
+
+        all_clips = concatenate_videoclips(clips=all_clips)
+        self.player.load(all_clips)
+
+
+if __name__ == '__main__':
+    a = main()
+    a.root.mainloop()
 
 
 
