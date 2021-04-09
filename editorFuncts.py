@@ -25,7 +25,7 @@ def endProgress():
     sys.stdout.flush()
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def getUnderAudio(a, minAudioLevel):
     x = 0
     returnList = []
@@ -129,7 +129,7 @@ class Editor:
         return clip.subclip(startTime, endTime)
 
     def cut_out_no_audio(self, videoObj, audioGap=1, minAudioLevel=0.005,
-                         speechGap=0.01, safeMode=True):
+                         speechGap=0.01, safeMode=False):
         """
         Cuts out parts of the video that have no audio.\n
         :param videoObj: The video that needs to be cut

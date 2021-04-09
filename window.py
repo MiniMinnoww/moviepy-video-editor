@@ -5,19 +5,19 @@ import tkinter.filedialog
 import tkinter.messagebox as box
 from collections import OrderedDict
 from functools import partial
-from threading import Thread
+
 from PIL import Image as Img
 from PIL import ImageTk as ImgTK
+
 import config
 import vidTk as vtk
 from editorFuncts import *
 from timeme import timeme
 
-
 tooltips = []
 
 
-def getImages(sprite_sheet, x):
+def getImages(sprite_sheet, x):  # Get all individual images from the sprite sheet ('x' is the number of items on the sheet)
     im = Img.open(sprite_sheet)
     w, h = im.size
     ww = w // x
@@ -191,7 +191,6 @@ class main:
                        _previewImage, _exportImage]
 
         for index, tip in enumerate(self.buttonTips):
-            state = tk.NORMAL
             self.buttons.append(
                 vtk.Button(self.root, image=self.images[index], command=self.commands[index]))
             self.buttons[index].place(x=index * 30, y=490)
@@ -304,8 +303,7 @@ class main:
             if self.fpsEntry.get() != "":
                 final_clip = final_clip.set_fps(int(self.fpsEntry.get()))
             print(f"Duration: {str(final_clip.duration)}, {str(final_clip.audio.duration)}")
-
-            final_clip.write_videofile(videoName + ".mp4", threads=6)  # , preset=str(self.speedList.get())
+            final_clip.write_videofile(videoName + ".mp4", preset=str(self.speedList.get()), threads=6)
             box.showinfo("Success", "Your video has been successfully created!")
 
     def cutOutAudio(self, x=0):
@@ -345,7 +343,6 @@ class main:
                     x = timeme(self.editor.cut_out_no_audio, 'both', vid)
                     cutVideos.append(x[0])
                 cutVideos = [clip.without_audio().set_audio(clip.audio) for clip in cutVideos]
-                # cutVideos = [clip.set_duration(int(clip.duration)) for clip in cutVideos]
                 concat = concatenate_videoclips(cutVideos)
                 config.saveOld()
                 config.clipFrames[self.selectedClip][1] = concat
@@ -400,13 +397,8 @@ class main:
         clips = tkinter.filedialog.askopenfilenames(title="Choose Clip File")
 
         clips = [clip.replace("/", "\\") for clip in clips]  # For consistency
-        # temp_loader = Loading_Bar()
-        # if __name__ == "__main__":
-        #     loadThread = Thread(target=Loading_Bar.startLoad, args=(temp_loader, "Adding Clips"))
-        #     loadThread.start()
         for clip in clips:
             self.addClip(clip)
-        # temp_loader.stopLoad()
 
     def reorderClips(self):
         self.reloadMenuFrame()
@@ -444,7 +436,6 @@ class main:
 
         for key in list(config.clipFrames.keys()):
             config.clipFrames[key][0].configure(bg="gray")
-        # if button["bg"] == "gray":
         button.configure(bg="green")
         self.updateInfoOnSelection()
 
@@ -500,15 +491,12 @@ class main:
                                                videoObj=config.clipFrames[self.selectedClip][1],
                                                color=self.selectedColor,
                                                fontsize=int(self.entry2.get()))
-                for image in x.iter_frames():
-                    img = Img.fromarray(image)
-                    img = img.resize((400, 200), Img.ANTIALIAS)
-                    TKImg = ImgTK.PhotoImage(img)
-                    break
-                self.reloadVideoFrame()
-                self.img_label = tk.Label(self.videoPlayer, image=TKImg)
-                self.img_label.pack()
-                self.img_label.photo = TKImg
+                frame = self.player.showFirstFrame(x)
+                root = tk.Toplevel(self.root)
+                label = tk.Label(root, image=frame)
+                label.photo = frame
+                label.pack()
+                root.mainloop()
             else:
                 box.showwarning("Error", "Please select a clip first")
 
@@ -517,7 +505,6 @@ class main:
             selectedObject = self.selectedClipInfo  # MoviePy VideoClip object
             clipName = self.selectedClip
             clipDur = selectedObject.duration
-            clipFps = selectedObject.fps
             clipFps = selectedObject.fps
             audDur = selectedObject.audio.duration
             text = f" Clip: {clipName},    Duration: {clipDur},    FPS: {clipFps},     Audio: {audDur}"
@@ -625,6 +612,3 @@ class main:
 if __name__ == '__main__':
     a = main()
     a.root.mainloop()
-
-
-

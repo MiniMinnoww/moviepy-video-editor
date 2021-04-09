@@ -40,3 +40,17 @@ def timeme(function, _return="time", *args):
         return ret, end
     else:
         raise ValueError("_return must be 'time', 'return', or 'both")
+
+
+class stopwatch:
+    """
+    Simple class to time something. You can call start() to start timer, and stop() to stop timer and return stopwatch value
+    """
+    def __init__(self):
+        self.startTime = 0
+
+    def start(self):
+        self.startTime = time.time()
+
+    def stop(self):
+        return time.time() - self.startTime

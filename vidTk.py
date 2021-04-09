@@ -1,12 +1,14 @@
+import sys
 import tkinter as tk
 from functools import partial
 from threading import Thread
-
+from time import sleep
 import numpy as np
 import pygame as pg
 from PIL import Image, ImageTk
-import sys
+
 import config
+from timeme import stopwatch
 
 
 class DragManager:
@@ -57,6 +59,7 @@ class DragManager:
             #     print(e)
         except:
             pass
+
 
 def center(win):
     """
@@ -128,20 +131,17 @@ class VideoClipFilePlayer:
         self.stop = False
 
     def load(self, video):
+        self.fps = video.fps
+        self.frame_length = 1 / self.fps
+        print(self.frame_length)
+        print(self.fps)
         self.stop = True
         try:
             self.unload()
         except Exception as e:
             print(e)
         self.video = video
-        for f in self.video.iter_frames():
-            print(f.shape)
-            img = Image.fromarray(f, 'RGB')
-            img = img.resize((round(img.width / 1.5), round(img.height / 1.5)), Image.ANTIALIAS)
-            tkImage = ImageTk.PhotoImage(img)
-            self.display.configure(image=tkImage)
-            self.display.photo = tkImage
-            break
+        self.showFirstFrame()
         pg.mixer.pre_init(frequency=44100, size=-16, channels=1)
         pg.mixer.init()
         pg.mixer.set_num_channels(1)
@@ -157,6 +157,25 @@ class VideoClipFilePlayer:
         self.stop = False
         videoThread = Thread(target=self._video_play)
         videoThread.start()
+
+    def showFirstFrame(self, video=None):
+        if video is None:
+            for f in self.video.iter_frames():
+                print(f.shape)
+                img = Image.fromarray(f, 'RGB')
+                img = img.resize((round(img.width / 1.5), round(img.height / 1.5)), Image.ANTIALIAS)
+                tkImage = ImageTk.PhotoImage(img)
+                self.display.configure(image=tkImage)
+                self.display.photo = tkImage
+                break
+        else:
+            for f in video.iter_frames():
+                print(f.shape)
+                img = Image.fromarray(f, 'RGB')
+                img = img.resize((round(img.width / 1.7), round(img.height / 1.7)), Image.ANTIALIAS)
+                tkImage = ImageTk.PhotoImage(img)
+                break
+            return tkImage
 
     def toggle_play(self):
         if self.paused:
@@ -179,19 +198,34 @@ class VideoClipFilePlayer:
         pg.mixer.unpause()
 
     def _video_play(self):
-        print("Video play")
+        swatch = stopwatch()
+        swatch2 = stopwatch()
+        swatch2.start()
+        skippedTime = 0.0
+        frames = 0
         for frame in self.video.iter_frames():
             if self.stop:
                 sys.exit()
             while self.paused: pass
+            swatch.start()
             img = Image.fromarray(frame, 'RGB')
-
-            img = img.resize((round(img.width / 1.5), round(img.height / 1.5)), Image.ANTIALIAS)
+            img = img.resize((round(img.width / 1.7), round(img.height / 1.7)), Image.ANTIALIAS)
             tkImage = ImageTk.PhotoImage(img)
-
             self.display.configure(image=tkImage)
             self.display.photo = tkImage
-            
+            if skippedTime > self.frame_length:
+                print("Skipped a frame")
+                skippedTime -= self.frame_length
+                continue
+            if swatch.stop() < self.frame_length:
+                try:
+                    sleep(self.frame_length - swatch.stop())
+                except ValueError:
+                    print(2)
+                    pass
+            skippedTime += swatch.stop() - self.frame_length
+            frames += 1
+            # print(frames / self.fps - swatch2.stop())
     def unload(self):
         self.display.configure(image=self.default_image)
         self.display.photo = self.default_image
@@ -201,4 +235,3 @@ class VideoClipFilePlayer:
         self.paused = True
         self.stop = False
         pg.mixer.stop()
-
