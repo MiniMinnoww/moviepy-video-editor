@@ -5,27 +5,7 @@ from numba import jit
 import moviepy.editor as mpy
 
 
-def startProgress(title):
-    global progress_x
-    sys.stdout.write(title + ": [" + "-"*40 + "]" + chr(8)*41)
-    sys.stdout.flush()
-    progress_x = 0
-
-
-def progress(x):
-    global progress_x
-    x = int(x * 40 // 100)
-    sys.stdout.write("#" * (x - progress_x))
-    sys.stdout.flush()
-    progress_x = x
-
-
-def endProgress():
-    sys.stdout.write("#" * (40 - progress_x) + "]\n")
-    sys.stdout.flush()
-
-
-# @jit(nopython=True)
+@jit(nopython=True)
 def getUnderAudio(a, minAudioLevel):
     x = 0
     returnList = []
@@ -36,106 +16,19 @@ def getUnderAudio(a, minAudioLevel):
     return returnList
 
 
-class ToolTip(object):
-
-    def __init__(self, tip, widget):
-        self.widget = widget
-        self.tip_window = None
-        self.id = None
-        self.x = self.y = 0
-        self.text = tip
-
-    def showtip(self, _pass):
-        if self.tip_window or not self.text:
-            return
-        x, y, cx, cy = self.widget.bbox("insert")
-        x = x + self.widget.winfo_rootx() + 57
-        y = y + cy + self.widget.winfo_rooty() + 27
-        self.tip_window = tw = Toplevel(self.widget)
-        tw.wm_overrideredirect(1)
-        tw.wm_geometry("+%d+%d" % (x, y))
-        label = Label(tw, text=self.text, justify=LEFT,
-                      background="#ffffe0", relief=SOLID, borderwidth=1,
-                      font=("tahoma", "8", "normal"))
-        label.pack(ipadx=1)
-
-    def hidetip(self, _pass):
-        tw = self.tip_window
-        self.tip_window = None
-        if tw:
-            tw.destroy()
-
-
-class Loading_Bar:
-    def __init__(self):
-        pass
-
-    def startLoad(self, text, dotShown=True, alpha=0.7,
-                  updateDelay=500):  # Show the loading screen (should usually be thread)
-        """
-        Shows the loading bar on screen. Uses tkinter to show a black transparent screen.\n
-        :param text: The text to be displayed
-        :param alpha: The transparency of the window
-        :param dotShown: If dots should be shown after the text - i.e. Loading. -> Loading.. -> Loading...
-        :param updateDelay: Delay when calling update() function. This also includes the '.' loading.
-        :return:
-        """
-        self.dots = 0
-        self.load = True
-        self.text = text
-        self.iter = 0
-        self.dotShown = dotShown
-        self.updateDelay = updateDelay
-
-        self.loading = Tk()
-        self.loading.attributes("-alpha", alpha)
-        self.loading.attributes("-fullscreen", True)
-        self.loading.configure(bg="black")
-        self.loading.overrideredirect(True)
-
-        self.loading_text = Label(self.loading, text=self.text, bg="black", fg="green", font=("Courier", 44))
-        self.loading_text.place(relx=0.5, rely=0.5, anchor=CENTER)
-
-        self.loading.after(self.updateDelay, self.update)
-        self.loading.mainloop()
-
-    def stopLoad(self):  # Stop showing the loading screen (this is usually called when its finished)
-        """
-        Stops the loading screen from showing.
-        :return:
-        """
-        self.load = False
-
-    def update(self):  # Update the onscreen text with '.', '..', '...' or '' after the text to show loading
-        """
-        Update function to update the text and check if window needs to close.
-        :return:
-        """
-        if self.dotShown:
-            self.loading_text.config(text=(self.text + ("." * self.dots)))
-            if self.dots < 3:
-                self.dots += 1
-            else:
-                self.dots = 0
-        if self.load:
-            self.loading.after(self.updateDelay, self.update)
-        else:
-            self.loading.destroy()
-
-
 class Editor:
 
     def sub_clip(self, clip, startTime, endTime):
         return clip.subclip(startTime, endTime)
 
     def cut_out_no_audio(self, videoObj, audioGap=1, minAudioLevel=0.005,
-                         speechGap=0.01, safeMode=False):
+                         safeMode=False):
         """
         Cuts out parts of the video that have no audio.\n
         :param videoObj: The video that needs to be cut
         :param audioGap: The minimum gap in audio for cut
         :param minAudioLevel: The level at which the audio has to be below to be cut
-        :param speechGap: The size of the small pause between cuts so it doesn't cut instantly
+        :param safeMode: Whether to check audio is working after each iteration
         :return: VideoClip with necessary cuts
         """
 
@@ -223,7 +116,6 @@ class Editor:
         a = b.to_soundarray()
         print(a.shape)
 
-
         for index, lst in enumerate(a):
             if abs(lst[0]) < minAudioLevel:
                 frames_to_remove.append(index + 1)
@@ -261,10 +153,10 @@ class Editor:
             clip_with_margin = vid.margin(top=size, bottom=size, color=color)
         return clip_with_margin
 
-    def getMarginPreview(self, vid, type, size, color):
+    def getMarginPreview(self, vid, _type, size):
         clip = vid.subclip(0, 0.001)
-        if type == "border":
-            clip_with_margin = vid.margin(size)
+        if _type == "border":
+            clip_with_margin = clip.margin(size)
         else:
-            clip_with_margin = vid.margin(top=size, bottom=size)
+            clip_with_margin = clip.margin(top=size, bottom=size)
         return clip_with_margin

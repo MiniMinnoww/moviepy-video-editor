@@ -6,6 +6,7 @@ from time import sleep
 import numpy as np
 import pygame as pg
 from PIL import Image, ImageTk
+import tkinter
 
 import config
 from timeme import stopwatch
@@ -221,11 +222,11 @@ class VideoClipFilePlayer:
                 try:
                     sleep(self.frame_length - swatch.stop())
                 except ValueError:
-                    print(2)
                     pass
             skippedTime += swatch.stop() - self.frame_length
             frames += 1
             # print(frames / self.fps - swatch2.stop())
+
     def unload(self):
         self.display.configure(image=self.default_image)
         self.display.photo = self.default_image
@@ -235,3 +236,79 @@ class VideoClipFilePlayer:
         self.paused = True
         self.stop = False
         pg.mixer.stop()
+
+
+# A listbox class to let user drag and drop elements
+class Drag_and_Drop_Listbox(tkinter.Listbox):
+    def __init__(self, master, **kw):
+        kw['selectmode'] = tkinter
+        kw['activestyle'] = 'none'
+        tk.Listbox.__init__(self, master, kw)
+        self.bind('<Button-1>', self.getState, add='+')
+        self.bind('<Button-1>', self.setCurrent, add='+')
+        self.bind('<B1-Motion>', self.shiftSelection)
+        self.curIndex = None
+        self.curState = None
+
+    def setCurrent(self, event):
+        self.curIndex = self.nearest(event.y)
+
+    def getState(self, event):
+        i = self.nearest(event.y)
+        self.curState = self.selection_includes(i)
+
+    def shiftSelection(self, event):
+        i = self.nearest(event.y)
+        if self.curState == 1:
+            self.selection_set(self.curIndex)
+        else:
+            self.selection_clear(self.curIndex)
+        if i < self.curIndex:
+            # Moves up
+            x = self.get(i)
+            selected = self.selection_includes(i)
+            self.delete(i)
+            self.insert(i + 1, x)
+            if selected:
+                self.selection_set(i + 1)
+            self.curIndex = i
+        elif i > self.curIndex:
+            # Moves down
+            x = self.get(i)
+            selected = self.selection_includes(i)
+            self.delete(i)
+            self.insert(i - 1, x)
+            if selected:
+                self.selection_set(i - 1)
+            self.curIndex = i
+
+
+class ToolTip(object):
+
+    def __init__(self, tip, widget):
+        self.widget = widget
+        self.tip_window = None
+        self.id = None
+        self.x = self.y = 0
+        self.text = tip
+
+    def showtip(self, _pass):
+        if self.tip_window or not self.text:
+            return
+        x, y, cx, cy = self.widget.bbox("insert")
+        x = x + self.widget.winfo_rootx() + 57
+        y = y + cy + self.widget.winfo_rooty() + 27
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(1)
+        tw.wm_geometry("+%d+%d" % (x, y))
+        label = tk.Label(tw, text=self.text, justify=tk.LEFT,
+                      background="#ffffe0", relief=tk.SOLID, borderwidth=1,
+                      font=("tahoma", "8", "normal"))
+        label.pack(ipadx=1)
+
+    def hidetip(self, _pass):
+        tw = self.tip_window
+        self.tip_window = None
+        if tw:
+            tw.destroy()
+
