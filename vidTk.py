@@ -1,15 +1,7 @@
-import sys
 import tkinter as tk
 from functools import partial
-from threading import Thread
-from time import sleep
-import numpy as np
-import pygame as pg
-from PIL import Image, ImageTk
-import tkinter
 
 import config
-from timeme import stopwatch
 
 
 class DragManager:
@@ -56,8 +48,7 @@ class DragManager:
                     new[x] = config.clipFrames[x]
             config.clipFrames = new
 
-            # except Exception as e:
-            #     print(e)
+
         except:
             pass
 
@@ -101,8 +92,11 @@ class Button(tk.Button):
 
 
 class ClipButton(tk.Button):
-    def __init__(self, master, image=None, command=None):
+    def __init__(self, master, position, video, image, command=None):
         super().__init__(master, borderwidth=3, highlightcolor="green", relief=tk.FLAT, image=image)
+        self.position = position
+        self.image = image
+        self.video = video
 
         # mgr = DragManager()
         self.configure(command=command)
@@ -110,177 +104,174 @@ class ClipButton(tk.Button):
         self.photo = image
 
 
-class VideoClipFilePlayer:
-    def __init__(self, master, **kwargs):
-        bg = kwargs.get("bg", "#000000")
-        fg = kwargs.get("fg", "#FFFFFF")
-        default_image = np.zeros([720, 1280, 3], dtype=np.uint8)
-
-        self.display = tk.Label(master, bg=bg, fg=fg)
-        self.display.pack()
-        img = Image.fromarray(default_image, 'RGB')
-        img = img.resize((round(img.width / 1.5), round(img.height / 1.5)), Image.ANTIALIAS)
-        self.default_image = ImageTk.PhotoImage(img)
-
-        self.display.configure(image=self.default_image)
-        self.display.photo = self.default_image
-        self.toggle_button = tk.Button(master, bg=bg, fg=fg, text="Play/Pause", command=self.toggle_play)
-        self.toggle_button.pack()
-        self.audio = None
-        self.video = None
-        self.paused = True
-        self.stop = False
-
-    def load(self, video):
-        self.fps = video.fps
-        self.frame_length = 1 / self.fps
-        print(self.frame_length)
-        print(self.fps)
-        self.stop = True
-        try:
-            self.unload()
-        except Exception as e:
-            print(e)
-        self.video = video
-        self.showFirstFrame()
-        pg.mixer.pre_init(frequency=44100, size=-16, channels=1)
-        pg.mixer.init()
-        pg.mixer.set_num_channels(1)
-        prev_audio = self.video.audio.set_fps(44100)
-        prev_audio = prev_audio.to_soundarray()
-        prev_audio = np.reshape(prev_audio, (-1, 2))
-        prev_audio = np.int16(prev_audio * (2 ** 15))
-
-        self.audio = pg.sndarray.make_sound(prev_audio)
-        self.audio.play()
-        pg.mixer.pause()
-        self.paused = True
-        self.stop = False
-        videoThread = Thread(target=self._video_play)
-        videoThread.start()
-
-    def showFirstFrame(self, video=None):
-        if video is None:
-            for f in self.video.iter_frames():
-                print(f.shape)
-                img = Image.fromarray(f, 'RGB')
-                img = img.resize((round(img.width / 1.5), round(img.height / 1.5)), Image.ANTIALIAS)
-                tkImage = ImageTk.PhotoImage(img)
-                self.display.configure(image=tkImage)
-                self.display.photo = tkImage
-                break
-        else:
-            for f in video.iter_frames():
-                print(f.shape)
-                img = Image.fromarray(f, 'RGB')
-                img = img.resize((round(img.width / 1.7), round(img.height / 1.7)), Image.ANTIALIAS)
-                tkImage = ImageTk.PhotoImage(img)
-                break
-            return tkImage
-
-    def toggle_play(self):
-        if self.paused:
-            self.play()
-        else:
-            self.pause()
-
-    def play(self):
-        self.paused = False
-        self._audio_play()
-
-    def pause(self):
-        self.paused = True
-        self._audio_pause()
-
-    def _audio_pause(self):
-        pg.mixer.pause()
-
-    def _audio_play(self):
-        pg.mixer.unpause()
-
-    def _video_play(self):
-        swatch = stopwatch()
-        swatch2 = stopwatch()
-        swatch2.start()
-        skippedTime = 0.0
-        frames = 0
-        for frame in self.video.iter_frames():
-            if self.stop:
-                sys.exit()
-            while self.paused: pass
-            swatch.start()
-            img = Image.fromarray(frame, 'RGB')
-            img = img.resize((round(img.width / 1.7), round(img.height / 1.7)), Image.ANTIALIAS)
-            tkImage = ImageTk.PhotoImage(img)
-            self.display.configure(image=tkImage)
-            self.display.photo = tkImage
-            if skippedTime > self.frame_length:
-                print("Skipped a frame")
-                skippedTime -= self.frame_length
-                continue
-            if swatch.stop() < self.frame_length:
-                try:
-                    sleep(self.frame_length - swatch.stop())
-                except ValueError:
-                    pass
-            skippedTime += swatch.stop() - self.frame_length
-            frames += 1
-            # print(frames / self.fps - swatch2.stop())
-
-    def unload(self):
-        self.display.configure(image=self.default_image)
-        self.display.photo = self.default_image
-        self.audio.stop()
-        self.audio = None
-        self.video = None
-        self.paused = True
-        self.stop = False
-        pg.mixer.stop()
-
-
-# A listbox class to let user drag and drop elements
-class Drag_and_Drop_Listbox(tkinter.Listbox):
-    def __init__(self, master, **kw):
-        kw['selectmode'] = tkinter
-        kw['activestyle'] = 'none'
-        tk.Listbox.__init__(self, master, kw)
-        self.bind('<Button-1>', self.getState, add='+')
-        self.bind('<Button-1>', self.setCurrent, add='+')
-        self.bind('<B1-Motion>', self.shiftSelection)
-        self.curIndex = None
-        self.curState = None
-
-    def setCurrent(self, event):
-        self.curIndex = self.nearest(event.y)
-
-    def getState(self, event):
-        i = self.nearest(event.y)
-        self.curState = self.selection_includes(i)
-
-    def shiftSelection(self, event):
-        i = self.nearest(event.y)
-        if self.curState == 1:
-            self.selection_set(self.curIndex)
-        else:
-            self.selection_clear(self.curIndex)
-        if i < self.curIndex:
-            # Moves up
-            x = self.get(i)
-            selected = self.selection_includes(i)
-            self.delete(i)
-            self.insert(i + 1, x)
-            if selected:
-                self.selection_set(i + 1)
-            self.curIndex = i
-        elif i > self.curIndex:
-            # Moves down
-            x = self.get(i)
-            selected = self.selection_includes(i)
-            self.delete(i)
-            self.insert(i - 1, x)
-            if selected:
-                self.selection_set(i - 1)
-            self.curIndex = i
+# class VideoClipFilePlayer:
+#     def __init__(self, master, **kwargs):
+#         bg = kwargs.get("bg", "#000000")
+#         fg = kwargs.get("fg", "#FFFFFF")
+#         default_image = np.zeros([720, 1280, 3], dtype=np.uint8)
+#
+#         self.display = tk.Label(master, bg=bg, fg=fg)
+#         self.display.pack()
+#         img = Image.fromarray(default_image, 'RGB')
+#         img = img.resize((round(img.width / 1.5), round(img.height / 1.5)), Image.ANTIALIAS)
+#         self.default_image = ImageTk.PhotoImage(img)
+#
+#         self.display.configure(image=self.default_image)
+#         self.display.photo = self.default_image
+#         self.toggle_button = tk.Button(master, bg=bg, fg=fg, text="Play/Pause", command=self.toggle_play)
+#         self.toggle_button.pack()
+#         self.audio = None
+#         self.video = None
+#         self.paused = True
+#         self.stop = False
+#
+#     def load(self, video):
+#         self.fps = video.fps
+#         self.frame_length = 1 / self.fps
+#         self.stop = True
+#         try:
+#             self.unload()
+#         except AttributeError:
+#             pass
+#         except Exception as e:
+#             print(e)
+#         self.video = video
+#         self.showFirstFrame()
+#         pg.mixer.pre_init(frequency=44100, size=-16, channels=1)
+#         pg.mixer.init()
+#         pg.mixer.set_num_channels(1)
+#         prev_audio = self.video.audio.set_fps(44100)
+#         prev_audio = prev_audio.to_soundarray()
+#         prev_audio = np.reshape(prev_audio, (-1, 2))
+#         prev_audio = np.int16(prev_audio * (2 ** 15))
+#         print(prev_audio)
+#
+#         self.audio = pg.sndarray.make_sound(prev_audio)
+#         self.audio.play()
+#         pg.mixer.pause()
+#         self.paused = True
+#         self.stop = False
+#         videoThread = Thread(target=self._video_play)
+#         videoThread.start()
+#
+#     def showFirstFrame(self, video=None):
+#         if video is None:
+#             for f in self.video.iter_frames():
+#                 img = Image.fromarray(f, 'RGB')
+#                 img = img.resize((int(img.width / 4), int(img.height / 4)), Image.ANTIALIAS)
+#                 tkImage = ImageTk.PhotoImage(img)
+#                 self.display.configure(image=tkImage)
+#                 self.display.photo = tkImage
+#                 break
+#         else:
+#             for f in video.iter_frames():
+#                 img = Image.fromarray(f, 'RGB')
+#                 img = img.resize((int(img.width / 4), int(img.height / 4)), Image.ANTIALIAS)
+#                 tkImage = ImageTk.PhotoImage(img)
+#                 break
+#             return tkImage
+#
+#     def toggle_play(self):
+#         if self.paused:
+#             self.play()
+#         else:
+#             self.pause()
+#
+#     def play(self):
+#         self.paused = False
+#         self._audio_play()
+#
+#     def pause(self):
+#         self.paused = True
+#         self._audio_pause()
+#
+#     def _audio_pause(self):
+#         pg.mixer.pause()
+#
+#     def _audio_play(self):
+#         pg.mixer.unpause()
+#
+#     def _video_play(self):
+#         swatch = stopwatch()
+#         swatch2 = stopwatch()
+#         swatch2.start()
+#         skippedTime = 0.0
+#         frames = 0
+#         for frame in self.video.iter_frames():
+#             if self.stop:
+#                 sys.exit()
+#             while self.paused: pass
+#             swatch.start()
+#             img = Image.fromarray(frame, 'RGB')
+#             img = img.resize((round(img.width / 2), round(img.height / 2)), Image.ANTIALIAS)
+#             tkImage = ImageTk.PhotoImage(img)
+#             self.display.configure(image=tkImage)
+#             self.display.photo = tkImage
+#             if skippedTime > self.frame_length:
+#                 skippedTime -= self.frame_length
+#                 continue
+#             if swatch.stop() < self.frame_length:
+#                 try:
+#                     sleep(self.frame_length - swatch.stop())
+#                 except ValueError:
+#                     pass
+#             skippedTime += swatch.stop() - self.frame_length
+#             frames += 1
+#
+#     def unload(self):
+#         self.display.configure(image=self.default_image)
+#         self.display.photo = self.default_image
+#         self.audio.stop()
+#         self.audio = None
+#         self.video = None
+#         self.paused = True
+#         self.stop = False
+#         pg.mixer.stop()
+#
+#
+# # A listbox class to let user drag and drop elements
+# class Drag_and_Drop_Listbox(tkinter.Listbox):
+#     def __init__(self, master, **kw):
+#         kw['selectmode'] = tkinter
+#         kw['activestyle'] = 'none'
+#         tk.Listbox.__init__(self, master, kw)
+#         self.bind('<Button-1>', self.getState, add='+')
+#         self.bind('<Button-1>', self.setCurrent, add='+')
+#         self.bind('<B1-Motion>', self.shiftSelection)
+#         self.curIndex = None
+#         self.curState = None
+#
+#     def setCurrent(self, event):
+#         self.curIndex = self.nearest(event.y)
+#
+#     def getState(self, event):
+#         i = self.nearest(event.y)
+#         self.curState = self.selection_includes(i)
+#
+#     def shiftSelection(self, event):
+#         i = self.nearest(event.y)
+#         if self.curState == 1:
+#             self.selection_set(self.curIndex)
+#         else:
+#             self.selection_clear(self.curIndex)
+#         if i < self.curIndex:
+#             # Moves up
+#             x = self.get(i)
+#             selected = self.selection_includes(i)
+#             self.delete(i)
+#             self.insert(i + 1, x)
+#             if selected:
+#                 self.selection_set(i + 1)
+#             self.curIndex = i
+#         elif i > self.curIndex:
+#             # Moves down
+#             x = self.get(i)
+#             selected = self.selection_includes(i)
+#             self.delete(i)
+#             self.insert(i - 1, x)
+#             if selected:
+#                 self.selection_set(i - 1)
+#             self.curIndex = i
 
 
 class ToolTip(object):

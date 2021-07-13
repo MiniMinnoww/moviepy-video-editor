@@ -1,8 +1,7 @@
 from moviepy.editor import *
-from tkinter import *
 
 from numba import jit
-import moviepy.editor as mpy
+
 
 
 @jit(nopython=True)
@@ -34,7 +33,6 @@ class Editor:
 
         vid = videoObj
         vid = vid.set_duration(vid.duration)
-        print(f"This clip is {str(vid.fps * vid.duration)} frames long")
         b = vid.audio
         frames_to_remove_2d = []
         c_frames = []
@@ -114,7 +112,6 @@ class Editor:
         vid = vid.set_duration(vid.duration)
         b = vid.audio
         a = b.to_soundarray()
-        print(a.shape)
 
         for index, lst in enumerate(a):
             if abs(lst[0]) < minAudioLevel:
@@ -123,12 +120,8 @@ class Editor:
                 break
 
         frames_to_remove = [frames_to_remove[0] / vid.audio.fps, frames_to_remove[-1] / vid.audio.fps]
-        print(frames_to_remove)
         vid = vid.cutout(frames_to_remove[0], frames_to_remove[1])
         return vid
-
-        # except Exception as e:
-        #     print(e)
 
     def addText(self, x, y, text, videoObj, fontsize, color):
         clip = videoObj
